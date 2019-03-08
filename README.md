@@ -1,7 +1,8 @@
 # kafka-elk
 ### Containers up
     docker-compose up
-![Infra](infra.png)
+
+![Infra](infra.PNG)
 
 ### del containers
     docker-compose down
