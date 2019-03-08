@@ -1,9 +1,7 @@
 # kafka-elk
-
-## usage
-
 ### Containers up
     docker-compose up
+![Infra](infra.png)
 
 ### del containers
     docker-compose down
