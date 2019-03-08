@@ -1,0 +1,156 @@
+version: "3.2"
+
+services:
+
+###### Server Side
+
+  ## ng1
+  nginx1:
+    image: nginx
+    container_name: ng1
+    restart: always
+    ports:
+      - 80:80
+    volumes:
+      - .\log1:/var/log/nginx/
+
+  # shipper
+  filebeat1:
+    image: docker.elastic.co/beats/filebeat:6.6.1
+    volumes:
+      - .\cfg\filebeat1.yml:/usr/share/filebeat/filebeat.yml:ro
+      - .\log1:/log
+    links:
+      - kafka
+    depends_on:
+      - kafka
+  
+  ## ng2
+  nginx2:
+    image: nginx
+    container_name: ng2
+    restart: always
+    ports:
+      - 81:80
+    volumes:
+      - .\log2:/var/log/nginx/
+
+  # shipper
+  filebeat2:
+    image: docker.elastic.co/beats/filebeat:6.6.1
+    volumes:
+      - .\cfg\filebeat2.yml:/usr/share/filebeat/filebeat.yml:ro
+      - .\log2:/log
+    links:
+      - kafka
+    depends_on:
+      - kafka
+
+###### Broker(Cluster)
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    environment:
+    ports:
+      - 9092:9092
+    links:
+      - zookeeper
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_DELETE_TOPIC_ENABLE=true
+      - KAFKA_LOG_RETENTION_HOURS=1
+      - KAFKA_MESSAGE_MAX_BYTES=10000000
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=10000000
+      - KAFKA_GROUP_MAX_SESSION_TIMEOUT_MS=60000
+      - KAFKA_NUM_PARTITIONS=2
+      - KAFKA_DELETE_RETENTION_MS=1000
+
+  kafka-manager:
+    image: sheepkiller/kafka-manager:latest
+    container_name: kafka-manager
+    ports:
+      - 9000:9000
+    links:
+      - zookeeper
+      - kafka
+    environment:
+      ZK_HOSTS: zookeeper:2181
+      KM_ARGS: -Djava.net.preferIPv4Stack=true
+
+###### Indexer
+
+  # Parse, filter and transform
+  logstash:
+    image: docker.elastic.co/logstash/logstash:6.6.1
+    volumes:
+      - .\cfg\logstash.conf:/config-dir/logstash.conf
+    restart: always
+    command: logstash -f /config-dir/logstash.conf
+    ports:
+      - 9600:9600
+      - 7777:7777
+    links:
+      - elasticsearch
+      - kafka
+
+###### Storage and Search(Cluster)
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.6.1
+    container_name: es1
+    environment:
+      http.host: 0.0.0.0
+      transport.host: 127.0.0.1
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./esdata1:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:6.6.1
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_PASSWORD: changeme
+      ELASTICSEARCH_USERNAME: elastic
+    ulimits:
+      nproc: 65535
+      memlock:
+        soft: -1
+        hard: -1
+    cap_add:
+      - ALL
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    depends_on:
+      - elasticsearch  
+    ports:
+      - 5601:5601
+
+  elasticsearch-hq:
+    image: elastichq/elasticsearch-hq:release-v3.3.0
+    container_name: elasticsearch-hq-330
+    ports:
+      - 5000:5000
+    depends_on:
+      - elasticsearch

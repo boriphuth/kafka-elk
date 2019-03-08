@@ -1,0 +1,27 @@
+filebeat.prospectors:
+- paths:
+    - /log/access.log
+  tags:
+    - ng2_access
+    - ng_access
+  input_type: log
+  document_type: ng_access
+  fields_under_root: true
+
+- paths:
+    - /log/error.log
+  tags:
+    - ng2_error
+    - ng_error
+  input_type: log
+  document_type: ng_error
+  fields_under_root: true
+
+output.kafka:
+  hosts: ["kafka:9092"]
+  topic: 'log'
+  partition.round_robin:
+    reachable_only: false
+  required_acks: 1
+  compression: gzip
+  max_message_bytes: 1000000
