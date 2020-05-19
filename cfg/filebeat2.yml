@@ -1,4 +1,4 @@
-filebeat.prospectors:
+filebeat.inputs:
 - paths:
     - /log/access.log
   tags:
