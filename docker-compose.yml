@@ -12,14 +12,14 @@ services:
     ports:
       - 80:80
     volumes:
-      - .\log1:/var/log/nginx/
+      - ./log1:/var/log/nginx/
 
   # shipper
   filebeat1:
     image: docker.elastic.co/beats/filebeat:6.6.1
     volumes:
-      - .\cfg\filebeat1.yml:/usr/share/filebeat/filebeat.yml:ro
-      - .\log1:/log
+      - ./cfg/filebeat1.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./log1:/log
     links:
       - kafka
     depends_on:
@@ -33,14 +33,14 @@ services:
     ports:
       - 81:80
     volumes:
-      - .\log2:/var/log/nginx/
+      - ./log2:/var/log/nginx/
 
   # shipper
   filebeat2:
     image: docker.elastic.co/beats/filebeat:6.6.1
     volumes:
-      - .\cfg\filebeat2.yml:/usr/share/filebeat/filebeat.yml:ro
-      - .\log2:/log
+      - ./cfg/filebeat2.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./log2:/log
     links:
       - kafka
     depends_on:
@@ -94,7 +94,7 @@ services:
   logstash:
     image: docker.elastic.co/logstash/logstash:6.6.1
     volumes:
-      - .\cfg\logstash.conf:/config-dir/logstash.conf
+      - ./cfg/logstash.conf:/config-dir/logstash.conf
     restart: always
     command: logstash -f /config-dir/logstash.conf
     ports:
@@ -135,20 +135,20 @@ services:
         hard: -1
     cap_add:
       - ALL
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+    # deploy:
+    #   mode: global
+    #   restart_policy:
+    #     condition: on-failure
+    #     delay: 5s
+    #     max_attempts: 3
+    #     window: 120s
     depends_on:
       - elasticsearch  
     ports:
       - 5601:5601
 
   elasticsearch-hq:
-    image: elastichq/elasticsearch-hq:release-v3.3.0
+    image: elastichq/elasticsearch-hq:release-v3.5.12
     container_name: elasticsearch-hq-330
     ports:
       - 5000:5000
